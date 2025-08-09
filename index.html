@@ -2,20 +2,372 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PF2e Action Builder</title>
-  <script src="static/app.js" defer></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Serverless Pathfinder VTT</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      background: #f9f9f9;
+    }
+    #sidebar {
+      width: 320px;
+      background: #ffffff;
+      border-right: 1px solid #ddd;
+      padding: 1rem;
+      box-sizing: border-box;
+      overflow-y: auto;
+    }
+    #main {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+    #mapContainer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #e6e6e6;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center center;
+      cursor: move;
+    }
+    #mapContainer img.token {
+      position: absolute;
+      width: 64px;
+      height: 64px;
+      user-select: none;
+      cursor: grab;
+    }
+    h2, h3 {
+      margin-top: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    input[type="text"] {
+      width: calc(100% - 1rem);
+      padding: 0.5rem;
+      margin-bottom: 0.5rem;
+      box-sizing: border-box;
+    }
+    button {
+      display: inline-block;
+      margin-right: 0.5rem;
+      margin-bottom: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      background: #0074D9;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #888;
+      cursor: not-allowed;
+    }
+    #tokensList img {
+      display: block;
+      width: 32px;
+      height: 32px;
+      margin-right: 4px;
+    }
+    #chatMessages {
+      border: 1px solid #ddd;
+      height: 150px;
+      padding: 4px;
+      overflow-y: auto;
+      margin-bottom: 0.5rem;
+    }
+    #rollsList {
+      list-style: none;
+      padding-left: 0;
+      max-height: 120px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      margin: 0;
+      margin-bottom: 0.5rem;
+    }
+    #rollsList li {
+      padding: 2px 4px;
+      border-bottom: 1px solid #eee;
+      font-size: 0.9rem;
+    }
+  </style>
 </head>
 <body>
-  <h1>PF2e Action Builder</h1>
-  <h2>Actions</h2>
-  <ul id="actions-list"></ul>
-  <h2>Spells</h2>
-  <ul id="spells-list"></ul>
-  <div>
-    <label for="pastebin-key">Pastebin API Key (optional):</label>
-    <input type="text" id="pastebin-key" />
+  <div id="sidebar">
+    <h2>Pathfinder 2E VTT</h2>
+    <!-- Connection controls -->
+    <div id="connectControls">
+      <p><strong>Room:</strong></p>
+      <input id="roomInput" type="text" placeholder="Enter room ID or leave blank to create" />
+      <button id="joinBtn">Join Room</button>
+      <button id="createBtn">Create Room</button>
+    </div>
+    <!-- Session controls; hidden until connected -->
+    <div id="sessionControls" style="display:none;">
+      <p><strong>Connected to:</strong> <span id="roomDisplay"></span></p>
+      <h3>Map</h3>
+      <input id="mapUrlInput" type="text" placeholder="Map image URL" />
+      <button id="setMapBtn">Set Map</button>
+      <h3>Tokens</h3>
+      <input id="tokenUrlInput" type="text" placeholder="Token image URL" />
+      <button id="addTokenBtn">Add Token</button>
+      <div id="tokensList"></div>
+      <h3>Dice Roller</h3>
+      <input id="diceInput" type="text" placeholder="e.g. 1d20+5" />
+      <button id="rollBtn">Roll</button>
+      <ul id="rollsList"></ul>
+      <h3>Chat</h3>
+      <div id="chatMessages"></div>
+      <input id="chatInput" type="text" placeholder="Type a message" />
+      <button id="sendChatBtn">Send</button>
+    </div>
   </div>
-  <button id="export-btn">Export</button>
-  <div id="result"></div>
+  <div id="main">
+    <div id="mapContainer"></div>
+  </div>
+  <!-- Main application logic -->
+  <script type="module">
+    // Import dependencies via esm.sh. Using ?bundle parameter for ESM bundling.
+    import * as Y from 'https://esm.sh/yjs?bundle';
+    import { WebrtcProvider } from 'https://esm.sh/y-webrtc?bundle';
+    import { DiceRoller } from 'https://esm.sh/@dice-roller/rpg-dice-roller?bundle';
+
+    // UI elements
+    const roomInput = document.getElementById('roomInput');
+    const joinBtn = document.getElementById('joinBtn');
+    const createBtn = document.getElementById('createBtn');
+    const sessionControls = document.getElementById('sessionControls');
+    const roomDisplay = document.getElementById('roomDisplay');
+    const mapContainer = document.getElementById('mapContainer');
+    const mapUrlInput = document.getElementById('mapUrlInput');
+    const setMapBtn = document.getElementById('setMapBtn');
+    const tokenUrlInput = document.getElementById('tokenUrlInput');
+    const addTokenBtn = document.getElementById('addTokenBtn');
+    const tokensList = document.getElementById('tokensList');
+    const diceInput = document.getElementById('diceInput');
+    const rollBtn = document.getElementById('rollBtn');
+    const rollsList = document.getElementById('rollsList');
+    const chatInput = document.getElementById('chatInput');
+    const sendChatBtn = document.getElementById('sendChatBtn');
+    const chatMessages = document.getElementById('chatMessages');
+
+    // Global variables
+    let ydoc = null;
+    let provider = null;
+    let state = null;
+    let tokensY = null;
+    let rollsY = null;
+    let chatY = null;
+    let draggingTokenId = null;
+    let dragOffset = { x: 0, y: 0 };
+
+    // Utility: generate random room ID
+    function generateRoomId() {
+      return Math.random().toString(36).substring(2, 8);
+    }
+
+    // Initialize Yjs document and provider
+    function initRoom(roomId) {
+      // Dispose previous provider if any
+      if (provider) {
+        provider.disconnect();
+        provider.destroy();
+      }
+      ydoc = new Y.Doc();
+      // Use a public WebRTC signalling server. The default in y-webrtc uses public servers as fallback.
+      provider = new WebrtcProvider(roomId, ydoc, {
+        signaling: [
+          'wss://signaling.yjs.dev', // primary signalling server
+          'wss://y-webrtc-signaling-eu.herokuapp.com',
+          'wss://y-webrtc-signaling-us.herokuapp.com'
+        ],
+        password: roomId, // simple room-based encryption
+        awareness: new Y.awarenessProtocol.Awareness(ydoc)
+      });
+      state = ydoc.getMap('state');
+      // Create sub collections if not exist
+      if (!state.has('tokens')) state.set('tokens', new Y.Array());
+      if (!state.has('chat')) state.set('chat', new Y.Array());
+      if (!state.has('rolls')) state.set('rolls', new Y.Array());
+      if (!state.has('mapUrl')) state.set('mapUrl', '');
+      tokensY = state.get('tokens');
+      chatY = state.get('chat');
+      rollsY = state.get('rolls');
+      // Observe changes
+      state.observe(debounce(() => {
+        updateMap();
+      }, 100));
+      tokensY.observe(() => {
+        updateTokensUI();
+        renderTokensOnMap();
+      });
+      chatY.observe(() => {
+        updateChatUI();
+      });
+      rollsY.observe(() => {
+        updateRollsUI();
+      });
+      // Initial update
+      updateMap();
+      updateTokensUI();
+      updateRollsUI();
+      updateChatUI();
+      sessionControls.style.display = '';
+      roomDisplay.textContent = roomId;
+    }
+
+    // Debounce helper to avoid rapid updates
+    function debounce(fn, wait) {
+      let timeout;
+      return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => fn(...args), wait);
+      };
+    }
+
+    // UI event listeners
+    joinBtn.addEventListener('click', () => {
+      const id = roomInput.value.trim();
+      if (!id) {
+        alert('Please enter a room ID or click Create to generate one');
+        return;
+      }
+      initRoom(id);
+    });
+    createBtn.addEventListener('click', () => {
+      const id = generateRoomId();
+      roomInput.value = id;
+      initRoom(id);
+    });
+    setMapBtn.addEventListener('click', () => {
+      const url = mapUrlInput.value.trim();
+      if (!url) return;
+      state.set('mapUrl', url);
+    });
+    addTokenBtn.addEventListener('click', () => {
+      const url = tokenUrlInput.value.trim();
+      if (!url) return;
+      const tokensArr = tokensY;
+      const token = {
+        id: crypto.randomUUID(),
+        url,
+        x: 0,
+        y: 0
+      };
+      tokensArr.push([token]);
+      tokenUrlInput.value = '';
+    });
+    rollBtn.addEventListener('click', () => {
+      const notation = diceInput.value.trim();
+      if (!notation) return;
+      try {
+        const roller = new DiceRoller();
+        const roll = roller.roll(notation);
+        const result = roll.total;
+        rollsY.push([{ user: 'user', notation, result }]);
+        diceInput.value = '';
+      } catch (err) {
+        alert('Invalid dice notation');
+      }
+    });
+    sendChatBtn.addEventListener('click', () => {
+      const msg = chatInput.value.trim();
+      if (!msg) return;
+      chatY.push([{ user: 'user', text: msg }]);
+      chatInput.value = '';
+    });
+
+    // Update map background from state
+    function updateMap() {
+      const url = state.get('mapUrl') || '';
+      if (url) {
+        mapContainer.style.backgroundImage = `url('${url}')`;
+      } else {
+        mapContainer.style.backgroundImage = '';
+      }
+    }
+
+    // Render token thumbnails in sidebar
+    function updateTokensUI() {
+      tokensList.innerHTML = '';
+      const arr = tokensY.toArray();
+      arr.forEach(token => {
+        const img = document.createElement('img');
+        img.src = token.url;
+        img.title = token.id;
+        img.width = 32;
+        img.height = 32;
+        tokensList.appendChild(img);
+      });
+    }
+
+    // Draw tokens on map
+    function renderTokensOnMap() {
+      // Remove existing token elements
+      mapContainer.querySelectorAll('img.token').forEach(elem => elem.remove());
+      const arr = tokensY.toArray();
+      arr.forEach(token => {
+        const img = document.createElement('img');
+        img.src = token.url;
+        img.dataset.id = token.id;
+        img.className = 'token';
+        img.style.left = `${token.x || 0}px`;
+        img.style.top = `${token.y || 0}px`;
+        // Drag handlers
+        img.addEventListener('mousedown', e => {
+          draggingTokenId = token.id;
+          const rect = img.getBoundingClientRect();
+          dragOffset.x = e.clientX - rect.left;
+          dragOffset.y = e.clientY - rect.top;
+          e.preventDefault();
+        });
+        mapContainer.appendChild(img);
+      });
+    }
+    // Map container drag events
+    document.addEventListener('mouseup', () => {
+      draggingTokenId = null;
+    });
+    document.addEventListener('mousemove', e => {
+      if (!draggingTokenId) return;
+      const bounding = mapContainer.getBoundingClientRect();
+      const x = e.clientX - bounding.left - dragOffset.x;
+      const y = e.clientY - bounding.top - dragOffset.y;
+      // update token position in Yjs
+      const index = tokensY.toArray().findIndex(t => t.id === draggingTokenId);
+      if (index !== -1) {
+        const updated = Object.assign({}, tokensY.get(index));
+        updated.x = x;
+        updated.y = y;
+        tokensY.delete(index, 1);
+        tokensY.insert(index, [updated]);
+      }
+    });
+
+    function updateRollsUI() {
+      rollsList.innerHTML = '';
+      rollsY.toArray().forEach(r => {
+        const li = document.createElement('li');
+        li.textContent = `${r.notation} → ${r.result}`;
+        rollsList.prepend(li);
+      });
+    }
+    function updateChatUI() {
+      chatMessages.innerHTML = '';
+      chatY.toArray().forEach(c => {
+        const div = document.createElement('div');
+        div.textContent = c.text;
+        chatMessages.appendChild(div);
+      });
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+  </script>
 </body>
 </html>
