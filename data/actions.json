@@ -1,4 +1,0 @@
-[
-  {"name": "Strike", "command": "!strike"},
-  {"name": "Cast Spell", "command": "!cast ${spell}"}
-]
