@@ -92,12 +92,24 @@
       margin: 0;
       margin-bottom: 0.5rem;
     }
-    #rollsList li {
-      padding: 2px 4px;
-      border-bottom: 1px solid #eee;
-      font-size: 0.9rem;
-    }
-  </style>
+      #rollsList li {
+        padding: 2px 4px;
+        border-bottom: 1px solid #eee;
+        font-size: 0.9rem;
+      }
+      .ability-row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.25rem;
+      }
+      .ability-row label {
+        width: 40px;
+      }
+      .ability-row input {
+        width: 50px;
+        margin-right: 0.5rem;
+      }
+    </style>
 </head>
 <body>
   <div id="sidebar">
@@ -116,10 +128,42 @@
       <input id="mapUrlInput" type="text" placeholder="Map image URL" />
       <button id="setMapBtn">Set Map</button>
       <h3>Tokens</h3>
-      <input id="tokenUrlInput" type="text" placeholder="Token image URL" />
-      <button id="addTokenBtn">Add Token</button>
-      <div id="tokensList"></div>
-      <h3>Dice Roller</h3>
+        <input id="tokenUrlInput" type="text" placeholder="Token image URL" />
+        <button id="addTokenBtn">Add Token</button>
+        <div id="tokensList"></div>
+        <h3>Character Sheet</h3>
+        <input id="charNameInput" type="text" placeholder="Character Name" />
+        <div class="ability-row">
+          <label for="strInput">STR</label>
+          <input id="strInput" type="number" placeholder="0" />
+          <button class="rollAbilityBtn" data-ability="str">Roll</button>
+        </div>
+        <div class="ability-row">
+          <label for="dexInput">DEX</label>
+          <input id="dexInput" type="number" placeholder="0" />
+          <button class="rollAbilityBtn" data-ability="dex">Roll</button>
+        </div>
+        <div class="ability-row">
+          <label for="conInput">CON</label>
+          <input id="conInput" type="number" placeholder="0" />
+          <button class="rollAbilityBtn" data-ability="con">Roll</button>
+        </div>
+        <div class="ability-row">
+          <label for="intInput">INT</label>
+          <input id="intInput" type="number" placeholder="0" />
+          <button class="rollAbilityBtn" data-ability="int">Roll</button>
+        </div>
+        <div class="ability-row">
+          <label for="wisInput">WIS</label>
+          <input id="wisInput" type="number" placeholder="0" />
+          <button class="rollAbilityBtn" data-ability="wis">Roll</button>
+        </div>
+        <div class="ability-row">
+          <label for="chaInput">CHA</label>
+          <input id="chaInput" type="number" placeholder="0" />
+          <button class="rollAbilityBtn" data-ability="cha">Roll</button>
+        </div>
+        <h3>Dice Roller</h3>
       <input id="diceInput" type="text" placeholder="e.g. 1d20+5" />
       <button id="rollBtn">Roll</button>
       <ul id="rollsList"></ul>
@@ -135,9 +179,10 @@
   <!-- Main application logic -->
   <script type="module">
     // Import dependencies via esm.sh. Using ?bundle parameter for ESM bundling.
-    import * as Y from 'https://esm.sh/yjs?bundle';
-    import { WebrtcProvider } from 'https://esm.sh/y-webrtc?bundle';
-    import { DiceRoller } from 'https://esm.sh/@dice-roller/rpg-dice-roller?bundle';
+      import * as Y from 'https://esm.sh/yjs?bundle';
+      import { WebrtcProvider } from 'https://esm.sh/y-webrtc?bundle';
+      import { DiceRoller } from 'https://esm.sh/@dice-roller/rpg-dice-roller?bundle';
+      import { IndexeddbPersistence } from 'https://esm.sh/y-indexeddb?bundle';
 
     // UI elements
     const roomInput = document.getElementById('roomInput');
@@ -152,21 +197,31 @@
     const addTokenBtn = document.getElementById('addTokenBtn');
     const tokensList = document.getElementById('tokensList');
     const diceInput = document.getElementById('diceInput');
-    const rollBtn = document.getElementById('rollBtn');
-    const rollsList = document.getElementById('rollsList');
-    const chatInput = document.getElementById('chatInput');
-    const sendChatBtn = document.getElementById('sendChatBtn');
-    const chatMessages = document.getElementById('chatMessages');
+      const rollBtn = document.getElementById('rollBtn');
+      const rollsList = document.getElementById('rollsList');
+      const chatInput = document.getElementById('chatInput');
+      const sendChatBtn = document.getElementById('sendChatBtn');
+      const chatMessages = document.getElementById('chatMessages');
+      const charNameInput = document.getElementById('charNameInput');
+      const abilityInputs = {
+        str: document.getElementById('strInput'),
+        dex: document.getElementById('dexInput'),
+        con: document.getElementById('conInput'),
+        int: document.getElementById('intInput'),
+        wis: document.getElementById('wisInput'),
+        cha: document.getElementById('chaInput')
+      };
 
     // Global variables
     let ydoc = null;
     let provider = null;
     let state = null;
-    let tokensY = null;
-    let rollsY = null;
-    let chatY = null;
-    let draggingTokenId = null;
-    let dragOffset = { x: 0, y: 0 };
+      let tokensY = null;
+      let rollsY = null;
+      let chatY = null;
+      let characterY = null;
+      let draggingTokenId = null;
+      let dragOffset = { x: 0, y: 0 };
 
     // Utility: generate random room ID
     function generateRoomId() {
@@ -180,9 +235,17 @@
         provider.disconnect();
         provider.destroy();
       }
-      ydoc = new Y.Doc();
-      // Use a public WebRTC signalling server. The default in y-webrtc uses public servers as fallback.
-      provider = new WebrtcProvider(roomId, ydoc, {
+        ydoc = new Y.Doc();
+        const persistence = new IndexeddbPersistence('pf2e-vtt-' + roomId, ydoc);
+        persistence.whenSynced.then(() => {
+          updateMap();
+          updateTokensUI();
+          updateRollsUI();
+          updateChatUI();
+          updateCharacterUI();
+        });
+        // Use a public WebRTC signalling server. The default in y-webrtc uses public servers as fallback.
+        provider = new WebrtcProvider(roomId, ydoc, {
         signaling: [
           'wss://signaling.yjs.dev', // primary signalling server
           'wss://y-webrtc-signaling-eu.herokuapp.com',
@@ -195,11 +258,13 @@
       // Create sub collections if not exist
       if (!state.has('tokens')) state.set('tokens', new Y.Array());
       if (!state.has('chat')) state.set('chat', new Y.Array());
-      if (!state.has('rolls')) state.set('rolls', new Y.Array());
-      if (!state.has('mapUrl')) state.set('mapUrl', '');
-      tokensY = state.get('tokens');
-      chatY = state.get('chat');
-      rollsY = state.get('rolls');
+        if (!state.has('rolls')) state.set('rolls', new Y.Array());
+        if (!state.has('mapUrl')) state.set('mapUrl', '');
+        if (!state.has('character')) state.set('character', new Y.Map());
+        tokensY = state.get('tokens');
+        chatY = state.get('chat');
+        rollsY = state.get('rolls');
+        characterY = state.get('character');
       // Observe changes
       state.observe(debounce(() => {
         updateMap();
@@ -211,17 +276,21 @@
       chatY.observe(() => {
         updateChatUI();
       });
-      rollsY.observe(() => {
+        rollsY.observe(() => {
+          updateRollsUI();
+        });
+        characterY.observe(() => {
+          updateCharacterUI();
+        });
+        // Initial update
+        updateMap();
+        updateTokensUI();
         updateRollsUI();
-      });
-      // Initial update
-      updateMap();
-      updateTokensUI();
-      updateRollsUI();
-      updateChatUI();
-      sessionControls.style.display = '';
-      roomDisplay.textContent = roomId;
-    }
+        updateChatUI();
+        updateCharacterUI();
+        sessionControls.style.display = '';
+        roomDisplay.textContent = roomId;
+      }
 
     // Debounce helper to avoid rapid updates
     function debounce(fn, wait) {
@@ -277,12 +346,36 @@
         alert('Invalid dice notation');
       }
     });
-    sendChatBtn.addEventListener('click', () => {
-      const msg = chatInput.value.trim();
-      if (!msg) return;
-      chatY.push([{ user: 'user', text: msg }]);
-      chatInput.value = '';
-    });
+      sendChatBtn.addEventListener('click', () => {
+        const msg = chatInput.value.trim();
+        if (!msg) return;
+        chatY.push([{ user: 'user', text: msg }]);
+        chatInput.value = '';
+      });
+
+      charNameInput.addEventListener('input', () => {
+        characterY.set('name', charNameInput.value);
+      });
+      ['str', 'dex', 'con', 'int', 'wis', 'cha'].forEach(ab => {
+        abilityInputs[ab].addEventListener('input', () => {
+          const val = parseInt(abilityInputs[ab].value) || 0;
+          characterY.set(ab, val);
+        });
+      });
+      document.querySelectorAll('.rollAbilityBtn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const ab = btn.dataset.ability;
+          const mod = parseInt(abilityInputs[ab].value) || 0;
+          try {
+            const roller = new DiceRoller();
+            const notation = `1d20+${mod}`;
+            const roll = roller.roll(notation);
+            rollsY.push([{ user: 'user', notation: `${ab.toUpperCase()} ${notation}`, result: roll.total }]);
+          } catch (err) {
+            alert('Invalid roll');
+          }
+        });
+      });
 
     // Update map background from state
     function updateMap() {
@@ -359,15 +452,22 @@
         rollsList.prepend(li);
       });
     }
-    function updateChatUI() {
-      chatMessages.innerHTML = '';
-      chatY.toArray().forEach(c => {
-        const div = document.createElement('div');
-        div.textContent = c.text;
-        chatMessages.appendChild(div);
-      });
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-  </script>
-</body>
-</html>
+      function updateChatUI() {
+        chatMessages.innerHTML = '';
+        chatY.toArray().forEach(c => {
+          const div = document.createElement('div');
+          div.textContent = c.text;
+          chatMessages.appendChild(div);
+        });
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+      function updateCharacterUI() {
+        if (!characterY) return;
+        charNameInput.value = characterY.get('name') || '';
+        ['str', 'dex', 'con', 'int', 'wis', 'cha'].forEach(ab => {
+          abilityInputs[ab].value = characterY.get(ab) ?? '';
+        });
+      }
+    </script>
+  </body>
+  </html>
