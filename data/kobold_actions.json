@@ -1,0 +1,253 @@
+[
+  {
+    "name": "Extravagent Parry",
+    "tags": [],
+    "type": "other",
+    "rolls": [
+      {
+        "name": "Effect",
+        "type": "text",
+        "extraTags": [],
+        "defaultText": "You use one-handed weapons to parry with style. You gain a +1 circumstance bonus to AC until the start of your next turn, or a +2 circumstance bonus if you have a free hand or are wielding a weapon with the parry trait. You lose this circumstance bonus if you no longer meet this feat's requirement. If a creature misses you with a Strike while you have this bonus, you gain panache until the end of your next turn.",
+        "failureText": null,
+        "successText": null,
+        "allowRollModifiers": true,
+        "criticalFailureText": null,
+        "criticalSuccessText": null
+      }
+    ],
+    "baseLevel": null,
+    "actionCost": "oneAction",
+    "description": "",
+    "autoHeighten": false
+  },
+  {
+    "name": "One for All",
+    "tags": [],
+    "type": "other",
+    "rolls": [
+      {
+        "name": "Aid Check",
+        "roll": "1d20+[diplomacy]",
+        "type": "skill-challenge",
+        "targetDC": "15",
+        "allowRollModifiers": true
+      },
+      {
+        "name": "Effect",
+        "type": "text",
+        "extraTags": [],
+        "defaultText": "With precisely the right words of encouragement, you bolster an ally's efforts. Designate an ally within 30 feet; this action counts as sufficient preparation to Aid that ally. When you use the Aid reaction to help that ally, you can roll Diplomacy in place of the usual check and the action gains the bravado trait.",
+        "failureText": null,
+        "successText": "+1 to triggering check",
+        "allowRollModifiers": true,
+        "criticalFailureText": "no panache gained.",
+        "criticalSuccessText": "+2 to triggering check"
+      }
+    ],
+    "baseLevel": null,
+    "actionCost": "oneAction",
+    "description": "",
+    "autoHeighten": false
+  },
+  {
+    "name": "Barrow's Edge Rapier",
+    "tags": [],
+    "type": "attack",
+    "rolls": [
+      {
+        "name": "Attack Roll",
+        "roll": "1d20+[dexterity]+[martialAttack]+((([level]-1)/6)+1)",
+        "type": "attack",
+        "targetDC": "AC",
+        "allowRollModifiers": true
+      },
+      {
+        "name": "Damage Roll",
+        "roll": "((([level]-1)/8)+1)d6+[strength]",
+        "type": "damage",
+        "damageType": "piercing",
+        "allowRollModifiers": true,
+        "healInsteadOfDamage": false
+      },
+      {
+        "name": "Barrow's Edge",
+        "roll": "((([level]-1)/8)+1)",
+        "type": "damage",
+        "damageType": "spirit",
+        "allowRollModifiers": true,
+        "healInsteadOfDamage": false
+      },
+      {
+        "name": "Precise Strike",
+        "roll": "((([level]-1)/4)+2)",
+        "type": "damage",
+        "damageType": "precision",
+        "allowRollModifiers": true,
+        "healInsteadOfDamage": false
+      }
+    ],
+    "baseLevel": null,
+    "actionCost": "oneAction",
+    "description": "",
+    "autoHeighten": false
+  },
+  {
+    "name": "Bloodied Barrow's Edge Rapier",
+    "tags": [],
+    "type": "attack",
+    "rolls": [
+      {
+        "name": "Attack Roll",
+        "roll": "1d20+[dexterity]+[martialAttack]+((([level]-1)/6)+1)",
+        "type": "attack",
+        "targetDC": "AC",
+        "allowRollModifiers": true
+      },
+      {
+        "name": "Damage Roll",
+        "roll": "((([level]-1)/8)+1)d6+[strength]",
+        "type": "damage",
+        "damageType": "piercing",
+        "allowRollModifiers": true,
+        "healInsteadOfDamage": false
+      },
+      {
+        "name": "Barrow's Edge",
+        "roll": "((([level]-1)/8)+3)",
+        "type": "damage",
+        "damageType": "spirit",
+        "allowRollModifiers": true,
+        "healInsteadOfDamage": false
+      },
+      {
+        "name": "Precise Strike",
+        "roll": "((([level]-1)/4)+2)",
+        "type": "damage",
+        "damageType": "precision",
+        "allowRollModifiers": true,
+        "healInsteadOfDamage": false
+      }
+    ],
+    "baseLevel": null,
+    "actionCost": "oneAction",
+    "description": "",
+    "autoHeighten": false
+  },
+  {
+    "name": "Bloodied Confident Finisher",
+    "tags": [],
+    "type": "attack",
+    "rolls": [
+      {
+        "name": "Attack Roll",
+        "roll": "1d20+[dexterity]+[martialAttack]+((([level]-1)/6)+1)",
+        "type": "attack",
+        "targetDC": "AC",
+        "allowRollModifiers": true
+      },
+      {
+        "name": "Damage Roll",
+        "roll": "((([level]-1)/8)+1)d6+[strength]",
+        "type": "damage",
+        "damageType": "piercing",
+        "allowRollModifiers": true,
+        "healInsteadOfDamage": false
+      },
+      {
+        "name": "Barrow's Edge",
+        "roll": "((([level]-1)/8)+3)",
+        "type": "damage",
+        "damageType": "spirit",
+        "allowRollModifiers": true,
+        "healInsteadOfDamage": false
+      },
+      {
+        "name": "Precise Strike",
+        "type": "advanced-damage",
+        "damageType": "piercing",
+        "failureRoll": "((([level]-1)/4)+2)d6/2",
+        "successRoll": "((([level]-1)/4)+2)d6",
+        "allowRollModifiers": true,
+        "criticalFailureRoll": null,
+        "criticalSuccessRoll": "((([level]-1)/4)+2)d6*2",
+        "healInsteadOfDamage": false
+      }
+    ],
+    "baseLevel": null,
+    "actionCost": "oneAction",
+    "description": "",
+    "autoHeighten": false
+  },
+  {
+    "name": "Bon Mot",
+    "tags": [],
+    "type": "other",
+    "rolls": [
+      {
+        "name": "Diplomacy",
+        "roll": "1d20+[diplomacy]",
+        "type": "attack",
+        "targetDC": "Will",
+        "allowRollModifiers": true
+      },
+      {
+        "name": "Effect",
+        "type": "text",
+        "extraTags": [],
+        "defaultText": "You launch an insightful quip at a foe, distracting them. Choose a foe within 30 feet and roll a Diplomacy check against the target's Will DC.",
+        "failureText": null,
+        "successText": "As critical success, but the penalty is –2.",
+        "allowRollModifiers": true,
+        "criticalFailureText": "Your quip is atrocious. You take the same penalty an enemy would take had you succeeded. This ends after 1 minute or if you issue another Bon Mot and succeed.",
+        "criticalSuccessText": "The target is distracted and takes a –3 status penalty to Perception and Will saves for 1 minute. The target can end the effect early with a retort to your Bon Mot. This can either be a single action that has the concentrate trait or an appropriate skill action to frame their retort. The GM determines which skill actions qualify, though they must take at least 1 action. Typically, the retort needs to use a linguistic Charisma-based skill action."
+      }
+    ],
+    "baseLevel": null,
+    "actionCost": "oneAction",
+    "description": "",
+    "autoHeighten": false
+  },
+  {
+    "name": "Confident Finisher",
+    "tags": [],
+    "type": "attack",
+    "rolls": [
+      {
+        "name": "Attack Roll",
+        "roll": "1d20+[dexterity]+[martialAttack]+((([level]-1)/6)+1)",
+        "type": "attack",
+        "targetDC": "AC",
+        "allowRollModifiers": true
+      },
+      {
+        "name": "Damage Roll",
+        "roll": "((([level]-1)/8)+1)d6+[strength]",
+        "type": "damage",
+        "damageType": "piercing",
+        "allowRollModifiers": true,
+        "healInsteadOfDamage": false
+      },
+      {
+        "name": "Barrow's Edge",
+        "roll": "((([level]-1)/8)+1)",
+        "type": "damage",
+        "damageType": "spirit",
+        "allowRollModifiers": true,
+        "healInsteadOfDamage": false
+      },
+      {
+        "name": "Precise Strike",
+        "roll": "(((2-1)/4)+2)d6",
+        "type": "damage",
+        "damageType": "precision",
+        "allowRollModifiers": true,
+        "healInsteadOfDamage": false
+      }
+    ],
+    "baseLevel": null,
+    "actionCost": "oneAction",
+    "description": "",
+    "autoHeighten": false
+  }
+]
